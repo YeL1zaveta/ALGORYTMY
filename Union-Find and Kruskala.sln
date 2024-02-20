@@ -1,0 +1,146 @@
+﻿
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <chrono>
+#include <ctime>
+using namespace std;
+
+template <typename T>
+struct Node {
+    T data;
+    Node() : data(0) {}
+    Node(T data) : data(data) {}
+};
+
+template <typename T>
+struct Edge {
+    int start, end;
+    T cost;
+
+    Edge() : start(0), end(0), cost(0) {}
+    Edge(int start, int end, T cost) : start(start), end(end), cost(cost) {}
+};
+
+template <typename T>
+bool compareEdges(const Edge<T>& edge1, const Edge<T>& edge2) {
+    return edge1.cost < edge2.cost;
+}
+
+class UnionFind {
+private:
+    int* parent;
+    int* rank;
+    int size;
+
+public:
+    UnionFind(int n) : size(n) {
+        parent = new int[size];
+        rank = new int[size];
+        for (int i = 0; i < size; ++i) {
+            parent[i] = i;
+            rank[i] = 0;
+        }
+    }
+
+    int find(int node) {
+        if (node != parent[node]) {
+            parent[node] = find(parent[node]);//znajdowania korzenia,tam gdzie jest node
+        }
+        return parent[node];//ostanie zaktualizowany, aby wskazywać na korzeń zbioru. 
+    }
+
+    void unionSets(int node1, int node2) {
+        int root1 = find(node1); // Znajdowanie korzenia zbioru zawierającego node1
+        int root2 = find(node2); // Znajdowanie korzenia zbioru zawierającego node2
+
+        if (root1 != root2) { // Sprawdzenie, czy node1 i node2 należą do różnych zbiorów
+            if (rank[root1] < rank[root2]) {
+                parent[root1] = root2; // Łączenie zbioru node1 z zbiorem node2
+            }
+            else if (rank[root1] > rank[root2]) {
+                parent[root2] = root1; // Łączenie zbioru node2 z zbiorem node1
+            }
+            else {
+                parent[root2] = root1; // Łączenie zbioru node2 z zbiorem node1
+                rank[root1]++; // Zwiększanie rangi zbioru node1 (jeśli mają te same rangi)
+            }
+        }
+    }
+
+};
+
+template <typename T>
+Edge<T>* AlgKruskala(Edge<T>* edges, int numEdges, int numNodes) {
+    UnionFind uf(numNodes);
+    int totalindex = 0;
+    T totalCost = 0;
+    int ilefound = 0;
+    clock_t start = clock();
+    sort(edges, edges + numEdges, compareEdges<double>);// Sortowanie tablicy krawędzi edges według ich kosztów 
+
+    Edge<T>* result = new Edge<T>[numNodes - 1];
+
+    for (int i = 0; i < numEdges; ++i) {
+        int setU = uf.find(edges[i].start);
+        ilefound++;  // Inkrementacja licznika dla każdej operacji find
+        int setV = uf.find(edges[i].end);
+        ilefound++;  // Inkrementacja licznika dla każdej operacji find
+
+        if (setU != setV) {//Sprawdzenie, czy oba końce krawędzi (setU i setV) nie należą do tego samego zbioru.
+            uf.unionSets(setU, setV);//zostaje dołączona do MST
+            result[totalindex++] = edges[i]; 
+            totalCost += edges[i].cost;
+            if (totalindex == numNodes - 1) { 
+                break;
+            }
+        }
+    }
+    clock_t end = clock();
+    double Timesort = double(end - start) / CLOCKS_PER_SEC;
+    cout << "Number of edges in MST: " << totalindex << endl; 
+    cout << "Total cost of MST: " << totalCost << endl;
+    cout << "Sorting Time: " << Timesort << " seconds" << endl;
+    cout << "Number of 'find' operations: " << ilefound << endl;
+
+    return result;
+}
+
+int main() {
+    ifstream inputFile("g3.txt");
+    if (!inputFile.is_open()) {
+        cerr << "Nie można otworzyć pliku." << endl;
+        return 1;
+    }
+
+    int numNodes, numEdges;
+    inputFile >> numNodes;
+
+    double x, y;
+    for (int i = 0; i < numNodes; ++i) {
+        inputFile >> x >> y;
+    }
+
+    inputFile >> numEdges;
+    Edge<double>* edges = new Edge<double>[numEdges];
+
+    for (int i = 0; i < numEdges; ++i) {
+        int start, end;
+        double cost;
+        inputFile >> start >> end >> cost;
+        edges[i] = Edge<double>(start, end, cost);
+    }
+
+    Edge<double>* mst = AlgKruskala(edges, numEdges, numNodes); 
+
+  /*  cout << "Edges in the MST:" << endl;
+    for (int i = 0; i < numNodes - 1; ++i) {
+        cout << mst[i].start << " - " << mst[i].end << " : " << mst[i].cost << endl;
+    }
+    */
+    delete[] mst;
+    inputFile.close();
+
+    return 0;
+}
+
